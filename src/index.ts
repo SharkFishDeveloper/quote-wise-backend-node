@@ -10,7 +10,7 @@ dotenv.config()
 
 const app = express();
 app.use(express.json())
-connectDB(process.env.MONGO_URL as string).then((r)=>console.log("Connected to DB")).catch((e)=>console.log("Error connecting to DB",e));
+connectDB(process.env.MONGO_URL as string).then(()=>console.log("Connected to DB")).catch((e)=>console.log("Error connecting to DB",e));
 
 
 
@@ -23,7 +23,7 @@ app.post("/login",async(req,res)=>{
         return res.status(400).json({ error: 'Email is required' })
     }
     try {
-        
+
         const user = await User.findOneAndUpdate(
             { email },
             { $setOnInsert: { email } },
@@ -34,7 +34,7 @@ app.post("/login",async(req,res)=>{
             return res.status(404).json({message:"JWT not defined"})
         }
         const token = jwt.sign({ userId: user._id }, process.env.JWT_SECRET, {
-            expiresIn: '-1s'
+            expiresIn: '20d'    
         })
 
         return res.json({ token })
@@ -49,3 +49,10 @@ app.get("/",(req,res)=>{
     return res.json({message:"BACKEND is working of Quote_Wise"})
 })
 app.listen(3000,()=>console.log("Server running on Port:3000"));
+
+
+
+// import Redis from "ioredis"
+
+// const client = new Redis("rediss://default:AS5HAAIjcDFkOGNiNmE4MGY4NmQ0NzEwODczZDk1ZDFlZDU2Y2Y4ZHAxMA@mighty-cricket-11847.upstash.io:6379");
+// await client.set('foo', 'bar');
