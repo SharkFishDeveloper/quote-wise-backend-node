@@ -22,6 +22,7 @@ const userSchema = new Schema({
   fcmToken: { type: String,required: true },
   country: { type: String },
   purchasedPacks: [purchasedPackSchema],
+  // add user's own recommendation
   // city -> Maybe add this later
 });
 
