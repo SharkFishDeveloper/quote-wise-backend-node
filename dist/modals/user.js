@@ -25,8 +25,27 @@ var __importStar = (this && this.__importStar) || function (mod) {
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.User = void 0;
 const mongoose_1 = __importStar(require("mongoose"));
+var PurchasePackId;
+(function (PurchasePackId) {
+    PurchasePackId["PREMIUM_1"] = "premium-1";
+    PurchasePackId["PREMIUM_2"] = "premium-2";
+    PurchasePackId["PREMIUM_3"] = "premium-3";
+})(PurchasePackId || (PurchasePackId = {}));
+const purchasedPackSchema = new mongoose_1.Schema({
+    id: {
+        type: String,
+        enum: Object.values(PurchasePackId),
+        required: true,
+    },
+    dailyMoodLevel: { type: String, required: true },
+    notificationTopic: { type: String, required: true },
+    notificationMood: { type: String, required: true },
+});
 const userSchema = new mongoose_1.Schema({
     email: { type: String, required: true },
-    fcmToken: { type: String }
+    fcmToken: { type: String, required: true },
+    country: { type: String },
+    purchasedPacks: [purchasedPackSchema],
+    // city -> Maybe add this later
 });
 exports.User = mongoose_1.default.model("User", userSchema);
