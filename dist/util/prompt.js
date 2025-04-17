@@ -16,6 +16,6 @@ Generate ONE unique short app notification that:
 - Sounds like a gentle push notification, not a quote slapped into an alert
 - Uses emojis only if it feels emotionally fitting
 - Feels personal, calming, and meaningful to the user's state
-- Do NOT include multiple options or explanations
+- Do NOT include multiple options,explanations or flower emojis
 - Format: Just the notification text, nothing else
 `;

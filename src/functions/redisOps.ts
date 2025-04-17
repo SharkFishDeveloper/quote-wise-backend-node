@@ -26,7 +26,7 @@ export const redisOperations = async()=>{
                 notificationTopic: pack?.notificationTopic,
                 notificationMood: pack?.notificationMood
             });
-            // console.log("RESPONSE ",JSON.stringify(response.candidates[0].content?.parts[0]?.text))
+            console.log("RESPONSE ",JSON.stringify(response.candidates[0].content?.parts[0]?.text))
 
             await client.rpush("premium_1_queue",JSON.stringify({
                 fmcToken : user.fcmToken,
@@ -57,6 +57,8 @@ export const redisOperations = async()=>{
             }));
             await client.set("last_index_premium1", user._id.toString());
         }
+    }else {
+        console.log("last_index ",last_index)
     }
 }
 

@@ -17,19 +17,25 @@ const dbConnect_1 = __importDefault(require("./util/dbConnect"));
 const user_1 = require("./modals/user");
 const jsonwebtoken_1 = __importDefault(require("jsonwebtoken"));
 const dotenv_1 = __importDefault(require("dotenv"));
+const cors_1 = __importDefault(require("cors"));
 const redisOps_1 = require("./functions/redisOps");
 dotenv_1.default.config();
 const app = (0, express_1.default)();
 app.use(express_1.default.json());
+app.use((0, cors_1.default)());
 (0, dbConnect_1.default)(process.env.MONGO_URL).then(() => console.log("Connected to DB")).catch((e) => console.log("Error connecting to DB", e));
 //@ts-ignore
 app.post("/login", (req, res) => __awaiter(void 0, void 0, void 0, function* () {
-    const { email } = req.body;
+    console.log(req.body);
+    const { email, fcmToken } = req.body;
     if (!email) {
         return res.status(400).json({ error: 'Email is required' });
     }
+    if (!fcmToken) {
+        return res.status(400).json({ error: 'Fcm token is required' });
+    }
     try {
-        const user = yield user_1.User.findOneAndUpdate({ email }, { $setOnInsert: { email } }, { new: true, upsert: true });
+        const user = yield user_1.User.findOneAndUpdate({ email }, { $setOnInsert: Object.assign({ email }, (fcmToken && { fcmToken })) }, { new: true, upsert: true });
         if (!process.env.JWT_SECRET) {
             return res.status(404).json({ message: "JWT not defined" });
         }
@@ -47,10 +53,18 @@ app.post("/login", (req, res) => __awaiter(void 0, void 0, void 0, function* () 
 app.get("/", (req, res) => {
     return res.json({ message: "BACKEND is working for Quote_Wise" });
 });
-app.listen(3000, () => console.log("Server running on Port:3000"));
+app.get("/send/1", (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+    try {
+    }
+    catch (err) {
+        console.error("Send Error:", err);
+        res.status(500).json({ error: "Something went wrong." });
+    }
+}));
 // seed();
 let isRunning = false;
 setInterval(() => {
+    console.log("Interval triggered");
     if (isRunning)
         return; // prevent overlapping
     isRunning = true;
@@ -63,7 +77,9 @@ setInterval(() => {
     finally {
         isRunning = false;
     }
-}, 10000);
+}, 5000);
+app.listen(3000, () => console.log("Server running on Port:3000"));
+// run every run 30 min
 //     if(premium_users.length === 0){
 //         await client.set("last_index_premium1", -1);
 //     }else{

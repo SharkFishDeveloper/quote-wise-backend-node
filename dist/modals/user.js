@@ -46,6 +46,7 @@ const userSchema = new mongoose_1.Schema({
     fcmToken: { type: String, required: true },
     country: { type: String },
     purchasedPacks: [purchasedPackSchema],
+    // add user's own recommendation
     // city -> Maybe add this later
 });
 exports.User = mongoose_1.default.model("User", userSchema);
