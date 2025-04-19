@@ -4,10 +4,8 @@ import { User } from "./modals/user";
 import jwt from 'jsonwebtoken'
 import dotenv from 'dotenv'
 import cors from "cors"
-
 import { authMiddleware } from "./functions/authMiddleware";
-import { seed } from "./seed-data/seed";
-import { redisOperations } from "./functions/redisOps";
+import { redisOperations, sendFCM } from "./functions/redisOps";
 dotenv.config()
 
 
@@ -125,9 +123,13 @@ app.get("/",(req,res)=>{
     return res.json({message:"BACKEND is working for Quote_Wise"})
 })
 
+
+//@ts-ignore
 app.get("/send/1",async(req,res)=>{
+    
     try {
-      
+        await sendFCM();
+        return res.json({message:"Successfully pushed notifications"});
     } catch (err) {
         console.error("Send Error:", err);
         res.status(500).json({ error: "Something went wrong." });
@@ -136,32 +138,19 @@ app.get("/send/1",async(req,res)=>{
 
 
 
-
-
-// seed();
-// let isRunning = false;
-// setInterval(()=>{
-//     console.log("Interval triggered");
-//     if (isRunning) return; // prevent overlapping
-//         isRunning = true;
-//     try {
-//         redisOperations();
-//     } catch (error) {
-//         console.log("Redis operations error->>",error)
-//     }finally{
-//         isRunning = false;
-//     }
-// },5000) 
+let isRunning = false;
+setInterval(()=>{
+    console.log("Interval triggered");
+    if (isRunning) return; // prevent overlapping
+        isRunning = true;
+    try {
+        redisOperations();
+    } catch (error) {
+        console.log("Redis operations error->>",error)
+    }finally{
+        isRunning = false;
+    }
+},2700000) 
 
 
 app.listen(3000,()=>console.log("Server running on Port:3000"));
-
-
-
-// run every run 30 min
-
-    //     if(premium_users.length === 0){
-    //         await client.set("last_index_premium1", -1);
-    //     }else{
-    //         await client.set("last_index_premium1", 1);
-    //     }

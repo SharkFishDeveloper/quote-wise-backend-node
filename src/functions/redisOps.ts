@@ -3,23 +3,32 @@ import { User } from "../modals/user";
 import dotenv from 'dotenv'
 import { prompt } from "../util/prompt";
 import admin from "firebase-admin";
+import FIREBASE_KEY from "../util/QuotepushKey";
+
 dotenv.config()
 
 const client = new Redis(process.env.REDIS_URL as string);
 
 export const redisOperations = async()=>{
     let last_index = await client.get("last_index_premium1");
+    let q = await client.llen("premium_1_queue");
+    if(last_index === 'done' && q === 0){
+        last_index = null;
+    }
+    let last_date = await client.get("last_date_premium1") 
+    console.log(last_index,last_date,q)
+    const today = new Date().toISOString().split("T")[0];
+
+    if(last_date === today )return;
+
+
     if(last_index === "-1" || last_index === null){
-    // if(true){
-        // it means , the queue is empty so fetch new Users for the next notifications
         const premium_users = await User.find({
             "purchasedPacks.id": "premium-1"
         })
         for(let user of premium_users){
             const pack = user.purchasedPacks.find(p => p.id === "premium-1");
-            console.log("user ",user)
             if (!pack) continue;
-            // call gemini api
 
             const response = await geminiResponse({
                 dailyMoodLevel: pack?.dailyMoodLevel,
@@ -35,6 +44,7 @@ export const redisOperations = async()=>{
             await client.set("last_index_premium1", user._id.toString());
         }
         await client.set("last_index_premium1", "done");
+        await client.set("last_date_premium1",new Date().toISOString().split("T")[0])
 
     }
     else if(last_index.length > 4){
@@ -57,8 +67,8 @@ export const redisOperations = async()=>{
             }));
             await client.set("last_index_premium1", user._id.toString());
         }
-    }else {
-        console.log("last_index ",last_index)
+        await client.set("last_index_premium1", "done");
+        await client.set("last_date_premium1",new Date().toISOString().split("T")[0])
     }
 }
 
@@ -94,26 +104,32 @@ const geminiResponse = async(notification: object)=>{
 }
 
 
+admin.initializeApp({
+    credential: admin.credential.cert(FIREBASE_KEY as admin.ServiceAccount)
+});
 
 export async function sendFCM(){
-    const notificationsToSend = [];
-
-    while (true) {
-        const data = await client.lpop("premium_1_queue");
-        if (!data) break;
-        notificationsToSend.push(JSON.parse(data));
-    }
+    try {
+        const notificationsToSend = [];
+        
+        while (true) {
+            const data = await client.lpop("premium_1_queue");
+            console.log(data)
+            if (!data) break;
+            notificationsToSend.push(JSON.parse(data));
+        }
 
     if (notificationsToSend.length === 0) {
-        
+        return console.log("NOTHING");
     }
 
     // Construct FCM messages
+
     const messages = notificationsToSend.map(({ fmcToken, response }) => ({
         token: fmcToken,
         notification: {
             title: "Daily Reminder",
-            body: response
+            body: response?.candidates?.[0]?.content?.parts?.[0]?.text
         }
     }));
     
@@ -126,5 +142,7 @@ export async function sendFCM(){
             })
         )
     );
-
+    } catch (error) {
+        console.log(error)
+    }
 }

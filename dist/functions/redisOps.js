@@ -18,23 +18,29 @@ const user_1 = require("../modals/user");
 const dotenv_1 = __importDefault(require("dotenv"));
 const prompt_1 = require("../util/prompt");
 const firebase_admin_1 = __importDefault(require("firebase-admin"));
+const QuotepushKey_1 = __importDefault(require("../util/QuotepushKey"));
 dotenv_1.default.config();
 const client = new ioredis_1.default(process.env.REDIS_URL);
 const redisOperations = () => __awaiter(void 0, void 0, void 0, function* () {
     var _a, _b;
     let last_index = yield client.get("last_index_premium1");
+    let q = yield client.llen("premium_1_queue");
+    if (last_index === 'done' && q === 0) {
+        last_index = null;
+    }
+    let last_date = yield client.get("last_date_premium1");
+    console.log(last_index, last_date, q);
+    const today = new Date().toISOString().split("T")[0];
+    if (last_date === today)
+        return;
     if (last_index === "-1" || last_index === null) {
-        // if(true){
-        // it means , the queue is empty so fetch new Users for the next notifications
         const premium_users = yield user_1.User.find({
             "purchasedPacks.id": "premium-1"
         });
         for (let user of premium_users) {
             const pack = user.purchasedPacks.find(p => p.id === "premium-1");
-            console.log("user ", user);
             if (!pack)
                 continue;
-            // call gemini api
             const response = yield geminiResponse({
                 dailyMoodLevel: pack === null || pack === void 0 ? void 0 : pack.dailyMoodLevel,
                 notificationTopic: pack === null || pack === void 0 ? void 0 : pack.notificationTopic,
@@ -48,6 +54,7 @@ const redisOperations = () => __awaiter(void 0, void 0, void 0, function* () {
             yield client.set("last_index_premium1", user._id.toString());
         }
         yield client.set("last_index_premium1", "done");
+        yield client.set("last_date_premium1", new Date().toISOString().split("T")[0]);
     }
     else if (last_index.length > 4) {
         // it means this is an objectID and add users which come later in mongoDB
@@ -70,9 +77,8 @@ const redisOperations = () => __awaiter(void 0, void 0, void 0, function* () {
             }));
             yield client.set("last_index_premium1", user._id.toString());
         }
-    }
-    else {
-        console.log("last_index ", last_index);
+        yield client.set("last_index_premium1", "done");
+        yield client.set("last_date_premium1", new Date().toISOString().split("T")[0]);
     }
 });
 exports.redisOperations = redisOperations;
@@ -103,29 +109,43 @@ const geminiResponse = (notification) => __awaiter(void 0, void 0, void 0, funct
         return data;
     }
 });
+firebase_admin_1.default.initializeApp({
+    credential: firebase_admin_1.default.credential.cert(QuotepushKey_1.default)
+});
 function sendFCM() {
     return __awaiter(this, void 0, void 0, function* () {
-        const notificationsToSend = [];
-        while (true) {
-            const data = yield client.lpop("premium_1_queue");
-            if (!data)
-                break;
-            notificationsToSend.push(JSON.parse(data));
-        }
-        if (notificationsToSend.length === 0) {
-        }
-        // Construct FCM messages
-        const messages = notificationsToSend.map(({ fmcToken, response }) => ({
-            token: fmcToken,
-            notification: {
-                title: "Daily Reminder",
-                body: response
+        try {
+            const notificationsToSend = [];
+            while (true) {
+                const data = yield client.lpop("premium_1_queue");
+                console.log(data);
+                if (!data)
+                    break;
+                notificationsToSend.push(JSON.parse(data));
             }
-        }));
-        const response = yield Promise.all(messages.map(msg => firebase_admin_1.default.messaging().send({
-            token: msg.token,
-            notification: msg.notification
-        })));
+            if (notificationsToSend.length === 0) {
+                return console.log("NOTHING");
+            }
+            // Construct FCM messages
+            const messages = notificationsToSend.map(({ fmcToken, response }) => {
+                var _a, _b, _c, _d, _e;
+                return ({
+                    token: fmcToken,
+                    notification: {
+                        title: "Daily Reminder",
+                        body: (_e = (_d = (_c = (_b = (_a = response === null || response === void 0 ? void 0 : response.candidates) === null || _a === void 0 ? void 0 : _a[0]) === null || _b === void 0 ? void 0 : _b.content) === null || _c === void 0 ? void 0 : _c.parts) === null || _d === void 0 ? void 0 : _d[0]) === null || _e === void 0 ? void 0 : _e.text
+                    }
+                });
+            });
+            const response = yield Promise.all(messages.map(msg => firebase_admin_1.default.messaging().send({
+                token: msg.token,
+                notification: msg.notification
+            })));
+            console.log("response ==> ", response);
+        }
+        catch (error) {
+            console.log(error);
+        }
     });
 }
 exports.sendFCM = sendFCM;
