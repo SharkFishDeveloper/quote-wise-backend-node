@@ -36,9 +36,9 @@ app.post("/login",async(req,res)=>{
 
         const user = await User.findOneAndUpdate(
             { email },
-            { $setOnInsert: { email,...(fcmToken && { fcmToken }) } },
-            { new: true, upsert: true } 
-        )
+            { $setOnInsert: { email, fcmToken } },  // Only set fcmToken if it's a new user
+            { new: true, upsert: true }
+          );
 
         if (!process.env.JWT_SECRET) {
             return res.status(404).json({message:"JWT not defined"})
@@ -47,12 +47,78 @@ app.post("/login",async(req,res)=>{
             expiresIn: '20d'    
         })
 
-        return res.json({ token })
+        return res.json({ token, purchasedPacks: user.purchasedPacks || [] })
       } catch (error) {
         console.error('Login error:', error)
         return res.status(500).json({ error: 'Internal Server Error' })
       }
 })
+
+
+
+
+//@ts-ignore
+app.post("/buy", authMiddleware, async (req, res) => {
+    const { id } = req.body;
+
+    if (!id) {
+        return res.status(400).json({ message: "Pack Id not provided" });
+    }
+
+    try {
+        //@ts-ignore
+        const user = await User.findById(req.userId);
+        if (!user) {
+            return res.status(400).json({ message: "User not found" });
+        }
+
+        const alreadyPurchased = user.purchasedPacks.some(pack => pack.id === id);
+        if (alreadyPurchased) {
+            return res.status(400).json({ message: "Pack already purchased" });
+        }
+
+        user.purchasedPacks.push({
+            id,
+            dailyMoodLevel: null,
+            notificationTopic: null,
+            notificationMood: null,
+        });
+
+        await user.save();
+        return res.status(200).json({ message: "Successfully purchased" });
+    } catch (error) {
+        return res.status(500).json({ message: "Internal Server Error" });
+    }
+});
+
+//@ts-ignore
+app.put("/update",authMiddleware,async(req,res)=>{
+    try {
+        const {updatedPack} = req.body;
+    //@ts-ignore
+    const user = await User.findById(req.userId);
+    if (!user) {
+        return res.status(400).json({ message: "User not found" });
+    }
+    const packIndex = user.purchasedPacks.findIndex(
+       (pack) => pack.id === updatedPack.id
+    );
+    user.purchasedPacks[packIndex] = {
+        ...user.purchasedPacks[packIndex],
+        ...updatedPack,
+    };
+    
+    await user.save();
+    return res.status(200).json({message:"Updated successfully"})
+} catch (error) {
+        return res.status(400).json({message:"Try again later"})
+    }
+})
+
+
+
+
+
 
 //@ts-ignore
 app.get("/",(req,res)=>{
@@ -73,19 +139,19 @@ app.get("/send/1",async(req,res)=>{
 
 
 // seed();
-let isRunning = false;
-setInterval(()=>{
-    console.log("Interval triggered");
-    if (isRunning) return; // prevent overlapping
-        isRunning = true;
-    try {
-        redisOperations();
-    } catch (error) {
-        console.log("Redis operations error->>",error)
-    }finally{
-        isRunning = false;
-    }
-},5000) 
+// let isRunning = false;
+// setInterval(()=>{
+//     console.log("Interval triggered");
+//     if (isRunning) return; // prevent overlapping
+//         isRunning = true;
+//     try {
+//         redisOperations();
+//     } catch (error) {
+//         console.log("Redis operations error->>",error)
+//     }finally{
+//         isRunning = false;
+//     }
+// },5000) 
 
 
 app.listen(3000,()=>console.log("Server running on Port:3000"));

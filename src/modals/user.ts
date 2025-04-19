@@ -12,9 +12,9 @@ const purchasedPackSchema = new Schema({
     enum: Object.values(PurchasePackId),
     required: true,
   },
-  dailyMoodLevel: { type: String, required: true },
-  notificationTopic: { type: String, required: true },
-  notificationMood: { type: String, required: true },
+  dailyMoodLevel: { type: String},
+  notificationTopic: { type: String},
+  notificationMood: { type: String},
 });
 
 const userSchema = new Schema({

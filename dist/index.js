@@ -18,7 +18,7 @@ const user_1 = require("./modals/user");
 const jsonwebtoken_1 = __importDefault(require("jsonwebtoken"));
 const dotenv_1 = __importDefault(require("dotenv"));
 const cors_1 = __importDefault(require("cors"));
-const redisOps_1 = require("./functions/redisOps");
+const authMiddleware_1 = require("./functions/authMiddleware");
 dotenv_1.default.config();
 const app = (0, express_1.default)();
 app.use(express_1.default.json());
@@ -35,18 +35,66 @@ app.post("/login", (req, res) => __awaiter(void 0, void 0, void 0, function* () 
         return res.status(400).json({ error: 'Fcm token is required' });
     }
     try {
-        const user = yield user_1.User.findOneAndUpdate({ email }, { $setOnInsert: Object.assign({ email }, (fcmToken && { fcmToken })) }, { new: true, upsert: true });
+        const user = yield user_1.User.findOneAndUpdate({ email }, { $setOnInsert: { email, fcmToken } }, // Only set fcmToken if it's a new user
+        { new: true, upsert: true });
         if (!process.env.JWT_SECRET) {
             return res.status(404).json({ message: "JWT not defined" });
         }
         const token = jsonwebtoken_1.default.sign({ userId: user._id }, process.env.JWT_SECRET, {
             expiresIn: '20d'
         });
-        return res.json({ token });
+        return res.json({ token, purchasedPacks: user.purchasedPacks || [] });
     }
     catch (error) {
         console.error('Login error:', error);
         return res.status(500).json({ error: 'Internal Server Error' });
+    }
+}));
+//@ts-ignore
+app.post("/buy", authMiddleware_1.authMiddleware, (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+    const { id } = req.body;
+    if (!id) {
+        return res.status(400).json({ message: "Pack Id not provided" });
+    }
+    try {
+        //@ts-ignore
+        const user = yield user_1.User.findById(req.userId);
+        if (!user) {
+            return res.status(400).json({ message: "User not found" });
+        }
+        const alreadyPurchased = user.purchasedPacks.some(pack => pack.id === id);
+        if (alreadyPurchased) {
+            return res.status(400).json({ message: "Pack already purchased" });
+        }
+        user.purchasedPacks.push({
+            id,
+            dailyMoodLevel: null,
+            notificationTopic: null,
+            notificationMood: null,
+        });
+        yield user.save();
+        return res.status(200).json({ message: "Successfully purchased" });
+    }
+    catch (error) {
+        return res.status(500).json({ message: "Internal Server Error" });
+    }
+}));
+//@ts-ignore
+app.put("/update", authMiddleware_1.authMiddleware, (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+    try {
+        const { updatedPack } = req.body;
+        //@ts-ignore
+        const user = yield user_1.User.findById(req.userId);
+        if (!user) {
+            return res.status(400).json({ message: "User not found" });
+        }
+        const packIndex = user.purchasedPacks.findIndex((pack) => pack.id === updatedPack.id);
+        user.purchasedPacks[packIndex] = Object.assign(Object.assign({}, user.purchasedPacks[packIndex]), updatedPack);
+        yield user.save();
+        return res.status(200).json({ message: "Updated successfully" });
+    }
+    catch (error) {
+        return res.status(400).json({ message: "Try again later" });
     }
 }));
 //@ts-ignore
@@ -62,22 +110,19 @@ app.get("/send/1", (req, res) => __awaiter(void 0, void 0, void 0, function* () 
     }
 }));
 // seed();
-let isRunning = false;
-setInterval(() => {
-    console.log("Interval triggered");
-    if (isRunning)
-        return; // prevent overlapping
-    isRunning = true;
-    try {
-        (0, redisOps_1.redisOperations)();
-    }
-    catch (error) {
-        console.log("Redis operations error->>", error);
-    }
-    finally {
-        isRunning = false;
-    }
-}, 5000);
+// let isRunning = false;
+// setInterval(()=>{
+//     console.log("Interval triggered");
+//     if (isRunning) return; // prevent overlapping
+//         isRunning = true;
+//     try {
+//         redisOperations();
+//     } catch (error) {
+//         console.log("Redis operations error->>",error)
+//     }finally{
+//         isRunning = false;
+//     }
+// },5000) 
 app.listen(3000, () => console.log("Server running on Port:3000"));
 // run every run 30 min
 //     if(premium_users.length === 0){
