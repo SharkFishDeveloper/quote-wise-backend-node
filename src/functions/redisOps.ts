@@ -3,7 +3,6 @@ import { User } from "../modals/user";
 import dotenv from 'dotenv'
 import { prompt } from "../util/prompt";
 import admin from "firebase-admin";
-import FIREBASE_KEY from "../util/QuotepushKey";
 
 dotenv.config()
 
@@ -104,9 +103,9 @@ const geminiResponse = async(notification: object)=>{
 }
 
 
-admin.initializeApp({
-    credential: admin.credential.cert(FIREBASE_KEY as admin.ServiceAccount)
-});
+// admin.initializeApp({
+//     credential: admin.credential.cert(FIREBASE_KEY as admin.ServiceAccount)
+// });
 
 export async function sendFCM(){
     try {

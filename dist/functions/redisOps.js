@@ -18,7 +18,6 @@ const user_1 = require("../modals/user");
 const dotenv_1 = __importDefault(require("dotenv"));
 const prompt_1 = require("../util/prompt");
 const firebase_admin_1 = __importDefault(require("firebase-admin"));
-const QuotepushKey_1 = __importDefault(require("../util/QuotepushKey"));
 dotenv_1.default.config();
 const client = new ioredis_1.default(process.env.REDIS_URL);
 const redisOperations = () => __awaiter(void 0, void 0, void 0, function* () {
@@ -109,9 +108,9 @@ const geminiResponse = (notification) => __awaiter(void 0, void 0, void 0, funct
         return data;
     }
 });
-firebase_admin_1.default.initializeApp({
-    credential: firebase_admin_1.default.credential.cert(QuotepushKey_1.default)
-});
+// admin.initializeApp({
+//     credential: admin.credential.cert(FIREBASE_KEY as admin.ServiceAccount)
+// });
 function sendFCM() {
     return __awaiter(this, void 0, void 0, function* () {
         try {
@@ -141,7 +140,6 @@ function sendFCM() {
                 token: msg.token,
                 notification: msg.notification
             })));
-            console.log("response ==> ", response);
         }
         catch (error) {
             console.log(error);

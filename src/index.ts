@@ -6,6 +6,7 @@ import dotenv from 'dotenv'
 import cors from "cors"
 import { authMiddleware } from "./functions/authMiddleware";
 import { redisOperations, sendFCM } from "./functions/redisOps";
+import admin from "firebase-admin";
 dotenv.config()
 
 
@@ -123,6 +124,15 @@ app.get("/",(req,res)=>{
     return res.json({message:"BACKEND is working for Quote_Wise"})
 })
 
+try {
+    const FIREBASE_KEY = JSON.parse(process.env.FIREBASE_KEY_JSON as string);
+    admin.initializeApp({
+        credential: admin.credential.cert(FIREBASE_KEY as admin.ServiceAccount)
+    });
+    console.log("DONE FIREBASE ADMIN CRED")
+} catch (error) {
+    console.log(error)
+}
 
 //@ts-ignore
 app.get("/send/1",async(req,res)=>{

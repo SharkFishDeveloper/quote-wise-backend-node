@@ -20,6 +20,7 @@ const dotenv_1 = __importDefault(require("dotenv"));
 const cors_1 = __importDefault(require("cors"));
 const authMiddleware_1 = require("./functions/authMiddleware");
 const redisOps_1 = require("./functions/redisOps");
+const firebase_admin_1 = __importDefault(require("firebase-admin"));
 dotenv_1.default.config();
 const app = (0, express_1.default)();
 app.use(express_1.default.json());
@@ -102,26 +103,20 @@ app.put("/update", authMiddleware_1.authMiddleware, (req, res) => __awaiter(void
 app.get("/", (req, res) => {
     return res.json({ message: "BACKEND is working for Quote_Wise" });
 });
+try {
+    const FIREBASE_KEY = JSON.parse(process.env.FIREBASE_KEY_JSON);
+    firebase_admin_1.default.initializeApp({
+        credential: firebase_admin_1.default.credential.cert(FIREBASE_KEY)
+    });
+    console.log("DONE FIREBASE ADMIN CRED");
+}
+catch (error) {
+    console.log(error);
+}
 //@ts-ignore
 app.get("/send/1", (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     try {
         yield (0, redisOps_1.sendFCM)();
-        // admin.initializeApp({
-        //     credential: admin.credential.cert(FIREBASE_KEY as admin.ServiceAccount)
-        // });
-        // const message = {
-        //     token: 'd58r7G_2Qya4qdEnAszdKp:APA91bFCDE21nupiJ4bd171aouiVrSyr1Ll4zhSi8uzcCaa-Oho6dOIkkggqyHLED-Qr0D0Rr1GFpsPxwnge_3sAbPH3KMnJXnr2fJuxQ-R97JSl1ss8v5o',
-        //     notification: {
-        //         title: "Quote of the Day 📜",
-        //         body: "Push yourself, because no one else is going to do it for you."
-        //     },
-        //     android: {
-        //         notification: {
-        //           color: "#FFD700" // golden yellow, hex format
-        //         }
-        //       }
-        // };
-        // const response = await admin.messaging().send(message);
         return res.json({ message: "Successfully pushed notifications" });
     }
     catch (err) {
@@ -129,7 +124,6 @@ app.get("/send/1", (req, res) => __awaiter(void 0, void 0, void 0, function* () 
         res.status(500).json({ error: "Something went wrong." });
     }
 }));
-// seed();
 let isRunning = false;
 setInterval(() => {
     console.log("Interval triggered");
@@ -145,11 +139,5 @@ setInterval(() => {
     finally {
         isRunning = false;
     }
-}, 5000);
+}, 2700000);
 app.listen(3000, () => console.log("Server running on Port:3000"));
-// run every run 30 min
-//     if(premium_users.length === 0){
-//         await client.set("last_index_premium1", -1);
-//     }else{
-//         await client.set("last_index_premium1", 1);
-//     }
